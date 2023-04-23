@@ -1,0 +1,49 @@
+import SwiftUI
+import RealityKit
+
+struct ARViewWrapper: UIViewRepresentable {
+    typealias UIViewType = ARView
+    
+    @State private var isLoading = true
+    
+    func makeUIView(context: UIViewRepresentableContext<ARViewWrapper>) -> ARView {
+        let arView = ARView(frame: .zero, cameraMode: .ar, automaticallyConfigureSession: true)
+        
+        guard let modelUrl = Bundle.main.url(forResource: "WWDC", withExtension: "usdz") else {
+            fatalError("Unable to find the model file.")
+        }
+        
+        let modelEntity = try! ModelEntity.load(contentsOf: modelUrl)
+        modelEntity.generateCollisionShapes(recursive: true)
+        
+        for animation in modelEntity.availableAnimations {
+            modelEntity.playAnimation(animation.repeat(), transitionDuration: 0.5, startsPaused: false)
+        }
+        
+        let anchorEntity = AnchorEntity(plane: .horizontal)
+        anchorEntity.addChild(modelEntity)
+        arView.scene.addAnchor(anchorEntity)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            isLoading = false
+        }
+        return arView
+    }
+    
+    func updateUIView(_ uiView: ARView, context: UIViewRepresentableContext<ARViewWrapper>) {}
+    
+    func makeUIViewController(context: Context) -> UIViewController {
+        let loadingView = UIActivityIndicatorView(style: .large)
+        loadingView.startAnimating()
+        
+        let viewController = UIViewController()
+        viewController.view.addSubview(loadingView)
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.centerXAnchor.constraint(equalTo: viewController.view.centerXAnchor).isActive = true
+        loadingView.centerYAnchor.constraint(equalTo: viewController.view.centerYAnchor).isActive = true
+        
+        return viewController
+    }
+    
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
